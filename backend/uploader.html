@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <meta charset="utf-8">
+  <title>File Upload Example</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.9/angular.min.js"></script>
+  <body>
+    <div ng-controller="UploadController as ctrl">
+      <form ng-submit="ctrl.onSubmit()">
+        <input type="file">
+        <button type="submit">Upload</button>
+      </form>
+    </div>
+    <script>
+      var UploadController = function($http, $element) {
+        this.el_ = $element[0];
+        this.$http = $http;
+      };
+
+      UploadController.prototype.onSubmit = function() {
+        let inputEl = this.el_.querySelector('input[type="file"]');
+        let fileObj = inputEl.files[0];
+        this.createSignedUrlAndUpload(fileObj);
+      };
+
+      UploadController.prototype.upload = function(file, uploadUrl, contentType, gsPath) {
+        this.$http.put(uploadUrl, file, {
+          headers: {'Content-Type': contentType},
+        }).success(function() {
+          // Can store or save gsPath in a separate form submission.
+          console.log(`File was uploaded to: ${gsPath}`);
+        });
+      };
+
+      UploadController.prototype.createSignedUrlAndUpload = function(file) {
+        let apiRoot = '/_api/create_upload_url';
+        let fileName = file.name;
+        let contentLength = file.size;
+        let path = apiRoot + '?name=' + fileName + '&content_length=' + contentLength;
+        this.$http.get(path).success(function(resp) {
+          let uploadUrl = resp['upload_url'];
+          let contentType = resp['content_type'];
+          let gsPath = resp['gs_path'];
+          this.upload(file, uploadUrl, contentType, gsPath);
+        }.bind(this));
+      };
+
+      let app = angular.module('fileUpload', []);
+      app.controller('UploadController', UploadController);
+      angular.bootstrap(document, ['fileUpload']);
+    </script>

@@ -1,9 +1,18 @@
-service: ext-cloud-images
-api_version: 1
+service: grow-ext-file-upload
 runtime: python27
+api_version: 1
 threadsafe: yes
-instance_class: F4_1G
+
+libraries:
+- name: numpy
+  version: latest
 
 handlers:
+- url: /uploader.html
+  static_files: uploader.html
+  upload: uploader.html
+  expiration: 1s
+  secure: always
+  login: admin
 - url: .*
   script: main.app
