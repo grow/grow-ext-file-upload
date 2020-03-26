@@ -9,29 +9,57 @@
         <input type="file">
         <button type="submit">Upload</button>
       </form>
+      <div ng-if="!ctrl.uploadedFileUrl || ctrl.isWorking" style="margin-top: 20px; display: inline-flex; padding: 10px; border: 2px dotted #D3E4F9; border-radius: 5px; font-family: Roboto, arial;">
+        <div ng-if="!ctrl.isWorking">
+          Choose or paste an image to upload
+          <br><br>
+          <small>Tip: Use ⌘+Ctrl+Shift+4 on Mac to quickly capture screenshots to clipboard.</small>
+        </div>
+        <div ng-if="ctrl.isWorking">Working...</div>
+      </div>
+      <div ng-if="ctrl.uploadedFileUrl && !ctrl.isWorking" style="margin-top: 20px">
+        <a ng-href="{{ctrl.uploadedFileUrl}}">
+          <img ng-src="{{ctrl.uploadedFileUrl}}" style="max-width: 500px" ng-if="ctrl.isImage">
+          <span ng-if="!ctrl.isImage">{{ctrl.uploadedFileUrl}}</span>
+        </a>
+      </div>
     </div>
     <script>
       var UploadController = function($http, $element) {
         this.el_ = $element[0];
+        this.inputEl = this.el_.querySelector('input[type="file"]');
+        this.uploadedFileUrl = null;
+        this.isImage = null;
+        this.isWorking = false;
         this.$http = $http;
+
+        document.addEventListener('paste', function(e) {
+          if (!e.clipboardData.files.length) {
+            return;
+          }
+          let file = event.clipboardData.files[0];
+          this.createSignedUrlAndUpload(file);
+        }.bind(this));
       };
 
       UploadController.prototype.onSubmit = function() {
-        let inputEl = this.el_.querySelector('input[type="file"]');
-        let fileObj = inputEl.files[0];
+        let fileObj = this.inputEl.files[0];
         this.createSignedUrlAndUpload(fileObj);
       };
 
       UploadController.prototype.upload = function(file, uploadUrl, contentType, gsPath) {
+        this.isImage = contentType.startsWith('image');
         this.$http.put(uploadUrl, file, {
           headers: {'Content-Type': contentType},
-        }).success(function() {
+        }).success(function(result) {
           // Can store or save gsPath in a separate form submission.
           console.log(`File was uploaded to: ${gsPath}`);
-        });
+          this.uploadedFileUrl = `https://storage.googleapis.com${gsPath}`;
+        }.bind(this));
       };
 
       UploadController.prototype.createSignedUrlAndUpload = function(file) {
+        this.isWorking = true;
         let apiRoot = '/_api/create_upload_url';
         let fileName = file.name;
         let contentLength = file.size;

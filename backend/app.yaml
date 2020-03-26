@@ -1,4 +1,4 @@
-service: grow-ext-file-upload
+service: screenshot
 runtime: python27
 api_version: 1
 threadsafe: yes
@@ -7,12 +7,20 @@ libraries:
 - name: numpy
   version: latest
 
+#env_variables:
+#  GROW_FILE_UPLOAD_BUCKET: bucket
+#  GROW_FILE_UPLOAD_FOLDER: folder
+
 handlers:
 - url: /uploader.html
   static_files: uploader.html
   upload: uploader.html
   expiration: 1s
-  secure: always
+  login: admin
+- url: /
+  static_files: uploader.html
+  upload: uploader.html
+  expiration: 1s
   login: admin
 - url: .*
   script: main.app

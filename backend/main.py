@@ -30,8 +30,12 @@ class CreateUploadUrlHandler(webapp2.RequestHandler):
             self.error(400)
             return
 
-        gs_path_format = '/{bucket}/{folder}/{timestamp}'
-        gs_path = gs_path_format.format(bucket=BUCKET_NAME, folder=FOLDER, timestamp=timestamp)
+        if FOLDER:
+            gs_path_format = '/{bucket}/{folder}/{timestamp}'
+            gs_path = gs_path_format.format(bucket=BUCKET_NAME, folder=FOLDER, timestamp=timestamp)
+        else:
+            gs_path_format = '/{bucket}/{timestamp}'
+            gs_path = gs_path_format.format(bucket=BUCKET_NAME, timestamp=timestamp)
         gs_path = os.path.join(gs_path, name)
 
         signer = google_storage_signer.CloudStorageURLSigner()
