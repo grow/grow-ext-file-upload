@@ -23,7 +23,12 @@ class UploadedFile(ndb.Model):
 
     @classmethod
     def create_file_id(cls):
-        return str(uuid.uuid4())[:8]
+        existing = True
+        # Ensure ID is unique.
+        while existing is not None:
+            file_id = str(uuid.uuid4())[:12].replace('-', '')
+            existing = ndb.Key('UploadedFile', file_id).get()
+        return file_id
 
 
 class CreateUploadUrlHandler(webapp2.RequestHandler):
