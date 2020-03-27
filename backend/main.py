@@ -1,4 +1,6 @@
 from google.appengine.api import app_identity
+from google.appengine.ext import blobstore
+from google.appengine.ext import ndb
 import google_storage_signer
 import json
 import logging
@@ -6,11 +8,22 @@ import numpy
 import mimetypes
 import os
 import urllib
+import uuid
 import time
 import webapp2
 
 BUCKET_NAME = os.getenv('GROW_FILE_UPLOAD_BUCKET', app_identity.get_default_gcs_bucket_name())
 FOLDER = os.getenv('GROW_FILE_UPLOAD_FOLDER', 'grow-ext-file-upload')
+
+
+class UploadedFile(ndb.Model):
+    blob_key = ndb.StringProperty()
+    gs_path = ndb.StringProperty()
+    uploaded = ndb.DateTimeProperty(auto_now_add=True)
+
+    @classmethod
+    def create_file_id(cls):
+        return str(uuid.uuid4())[:8]
 
 
 class CreateUploadUrlHandler(webapp2.RequestHandler):
@@ -30,7 +43,7 @@ class CreateUploadUrlHandler(webapp2.RequestHandler):
             self.error(400)
             return
 
-        if FOLDER:
+        if FOLDER and FOLDER != 'None':
             gs_path_format = '/{bucket}/{folder}/{timestamp}'
             gs_path = gs_path_format.format(bucket=BUCKET_NAME, folder=FOLDER, timestamp=timestamp)
         else:
@@ -41,14 +54,36 @@ class CreateUploadUrlHandler(webapp2.RequestHandler):
         signer = google_storage_signer.CloudStorageURLSigner()
         request = signer.create_put(gs_path, content_type, content_length)
         upload_url = request['url'] + '?' + urllib.urlencode(request['params'])
+
+        file_id = UploadedFile.create_file_id()
+        if os.getenv('GROW_FILE_UPLOAD_PROXY'):
+            blob_key = blobstore.create_gs_key('/gs{}'.format(gs_path))
+            key = ndb.Key('UploadedFile', file_id)
+            ent = UploadedFile(key=key, gs_path=gs_path, blob_key=blob_key)
+            ent.put()
+
         data = {
             'content_type': content_type,
             'upload_url': upload_url,
             'gs_path': gs_path,
+            'file_id': file_id,
         }
         self.json_response(data)
 
 
+class ServeFileHandler(webapp2.RequestHandler):
+
+    def get(self, file_id):
+        ent = ndb.Key('UploadedFile', file_id).get()
+        if not ent:
+            self.abort(404)
+            return
+        if 'Content-Type' in self.response.headers:
+            del self.response.headers['Content-Type']
+        self.response.headers['X-AppEngine-BlobKey'] = str(ent.blob_key)
+
+
 app = webapp2.WSGIApplication([
   ('/_api/create_upload_url', CreateUploadUrlHandler),
+  ('/(.*)', ServeFileHandler),
 ])

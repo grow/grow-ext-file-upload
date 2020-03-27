@@ -49,6 +49,7 @@ Usage:
 from google.appengine.api import app_identity
 import base64
 import datetime
+import urllib
 import time
 
 # The Google Cloud Storage API endpoint. You should not need to change this.
@@ -86,6 +87,7 @@ class CloudStorageURLSigner(object):
 
   def _MakeUrl(self, verb, path, content_type='', content_md5=''):
     """Forms and returns the full signed URL to access GCS."""
+    path = urllib.quote(path)
     base_url = '%s%s' % (self.gcs_api_endpoint, path)
     signature_string = self._MakeSignatureString(verb, path, content_md5,
                                                  content_type)
