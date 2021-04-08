@@ -98,8 +98,11 @@ class CreateServingUrlHandler(webapp2.RequestHandler):
         file_id = self.request.POST.get('file_id')
         key = ndb.Key('UploadedFile', file_id)
         ent = key.get()
-        blob_key = blobstore.create_gs_key('/gs{}'.format(ent.gs_path))
-        serving_url = images.get_serving_url(blob_key, secure_url=True)
+        if ent.gs_path.endswith(IMAGE_EXTENSIONS):
+            blob_key = blobstore.create_gs_key('/gs{}'.format(ent.gs_path))
+            serving_url = images.get_serving_url(blob_key, secure_url=True)
+        else:
+            serving_url = 'https://storage.googleapis.com{}'.format(ent.gs_path)
         ent.serving_url = serving_url
         ent.put()
         self.json_response({
