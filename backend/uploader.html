@@ -41,7 +41,6 @@
         this.el_ = $element[0];
         this.inputEl = this.el_.querySelector('input[type="file"]');
         this.uploadedFileUrl = null;
-        this.fileId = null;
         this.isImage = null;
         this.isWorking = false;
         this.isError = false;
@@ -62,19 +61,33 @@
         this.createSignedUrlAndUpload(fileObj);
       };
 
-      UploadController.prototype.upload = function(file, uploadUrl, contentType, gsPath) {
-        this.isImage = contentType.startsWith('image');
-        this.$http.put(uploadUrl, file, {
-          headers: {'Content-Type': contentType},
+      UploadController.prototype.upload = function(file, options) {
+        this.isImage = options.contentType.startsWith('image');
+        this.$http.put(options.uploadUrl, file, {
+          headers: {'Content-Type': options.contentType},
         }).success(function(result) {
-          // Can store or save gsPath in a separate form submission.
           this.isWorking = false;
-          console.log(`File was uploaded to: ${gsPath}`);
-          this.uploadedFileUrl = `https://storage.googleapis.com${gsPath}`;
+          console.log(`File was uploaded to: ${options.gsPath}`);
+          this.uploadedFileUrl = `https://storage.googleapis.com${options.gsPath}`;
+          this.finalize(file, options);
         }.bind(this)).error(function(result) {
           this.isError = true;
         }.bind(this));
       };
+
+      UploadController.prototype.finalize = function(file, options) {
+        this.$http({
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          url: '/_api/create_serving_url',
+          data: `file_id=${options.fileId}`,
+        }).success(function(result) {
+          this.isWorking = false;
+          console.log(result);
+        }.bind(this)).error(function(result) {
+          this.isError = true;
+        }.bind(this));
+      }
 
       UploadController.prototype.createSignedUrlAndUpload = function(file) {
         this.isWorking = true;
@@ -84,11 +97,12 @@
         let contentLength = file.size;
         let path = apiRoot + '?name=' + fileName + '&content_length=' + contentLength;
         this.$http.get(path).success(function(resp) {
-          let uploadUrl = resp['upload_url'];
-          let contentType = resp['content_type'];
-          let gsPath = resp['gs_path'];
-          this.fileId = resp['file_id'];
-          this.upload(file, uploadUrl, contentType, gsPath);
+          this.upload(file, {
+            contentType: resp['content_type'],
+            fileId: resp['file_id'],
+            gsPath: resp['gs_path'],
+            uploadUrl: resp['upload_url'],
+          });
         }.bind(this));
       };
 
