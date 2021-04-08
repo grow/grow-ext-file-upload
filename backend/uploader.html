@@ -4,74 +4,178 @@
   <title>Uploader</title>
   <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.9/angular.min.js"></script>
   <style>
-    body {font-family: 'Roboto', sans-serif;}
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .form {
+      border-radius: 5px;
+      border: 2px dotted #D3E4F9;
+      box-sizing: border-box;
+      display: inline-flex;
+      margin-bottom: 20px;
+      margin-top: 20px;
+      max-width: 100%;
+      padding: 10px;
+      width: 500px;
+    }
+
+    .form__tips {
+      margin-top: 10px;
+      font-size: smaller;
+    }
+
+    .form__tips ul {
+      margin-block-end: 0;
+      padding-inline-start: 25px;
+    }
+
+    .results {
+      column-gap: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      row-gap: 24px;
+    }
+
+    .result {
+      max-width: 100%;
+      width: 500px;
+    }
+
+    .result__name,
+    .result__url {
+      overflow: hidden;
+      padding: 5px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .result__name + .result__name {
+      margin-top: 3px;
+    }
+
+    .result__status {
+      background-color: #D3E4F9;
+      border-radius: 2px;
+      font-size: smaller;
+      padding: 5px;
+    }
+
+    .result__image {
+      background-color: #efefef;
+      background-image: radial-gradient(circle, #888 1px, rgba(0,0,0,0) 1px);
+      background-size: 20px 20px;
+      box-sizing: border-box;
+      padding: 5px;
+    }
+
+    .result__image img {
+      max-width: 100%;
+    }
+
+    .snippet textarea {
+      background: #efefef;
+      border: none;
+      box-sizing: border-box;
+      font-family: Monaco, monospace;
+      font-size: 11px;
+      height: 300px;
+      margin-top: 20px;
+      padding: 10px;
+      width: 500px;
+    }
   </style>
   <body>
     <div ng-controller="UploadController as ctrl">
       <form ng-submit="ctrl.onSubmit()">
-        <input type="file">
+        <input type="file" multiple="true">
         <button type="submit">Upload</button>
       </form>
-      <div ng-if="!ctrl.uploadedFileUrl || ctrl.isWorking" style="margin-top: 20px; display: inline-flex; padding: 10px; border: 2px dotted #D3E4F9; border-radius: 5px;">
-        <div ng-if="!ctrl.isWorking">
+      <div class="form">
+        <div>
           Choose or paste an image to upload
-          <br><br>
-          <small>Tip: Use ⌘+Ctrl+Shift+4 on Mac to quickly capture screenshots to clipboard.</small>
-        </div>
-        <div ng-if="ctrl.isWorking">
-          <div ng-if="ctrl.isError">
-            Sorry, an error occurred.
-          </div>
-          <div ng-if="!ctrl.isError">
-            Working...
+          <div class="form__tips">
+            Tips:
+            <ul>
+              <li>Use ⌘+Ctrl+Shift+4 on Mac to quickly capture screenshots to clipboard.</li>
+              <li>Select multiple files using the "Choose files" button to bulk upload.</li>
+            </ul>
           </div>
         </div>
       </div>
-      <div ng-if="ctrl.uploadedFileUrl && !ctrl.isWorking" style="margin-top: 20px">
-        <div style="margin-bottom: 20px">
-          <a ng-href="/{{ctrl.fileId}}">{{ctrl.baseUrl}}/{{ctrl.fileId}}</a>
+      <div class="results">
+        <div class="result" ng-repeat="result in ctrl.results">
+          <div class="result__status" ng-if="result.status != 'success'">
+            <div>
+              {{result.status}}: {{result.name}}
+            </div>
+          </div>
+          <div ng-if="result.status == 'success'">
+            <div class="result__status">
+              <div class="result__name">
+                <a href="{{ctrl.baseUrl}}/{{result.fileId}}">{{ctrl.baseUrl}}/{{result.fileId}}</a>
+              </div>
+              <div class="result__url" ng-if="result.isImage">
+                <a href="{{result.data.serving_url}}">{{result.data.serving_url}}</a>
+              </div>
+            </div>
+            <div
+              ng-if="result.isImage"
+              class="result__image"
+            >
+              <a
+                ng-href="{{result.data.serving_url}}"
+              >
+                <img
+                  ng-src="{{result.data.serving_url}}"
+                >
+              </a>
+            </div>
+          </div>
         </div>
-        <a ng-href="/{{ctrl.fileId}}" ng-if="ctrl.isImage">
-          <img ng-src="/{{ctrl.fileId}}" style="max-width: 500px">
-        </a>
+      </div>
+      <div class="snippet" ng-if="ctrl.snippet">
+        <textarea>{{ctrl.jsonSnippet}}</textarea>
       </div>
     </div>
     <script>
       var UploadController = function($http, $element) {
         this.el_ = $element[0];
         this.inputEl = this.el_.querySelector('input[type="file"]');
-        this.uploadedFileUrl = null;
-        this.isImage = null;
-        this.isWorking = false;
-        this.isError = false;
         this.baseUrl = window.location.origin;
         this.$http = $http;
+        this.results = {};
+        this.snippet = null;
+        this.jsonSnippet = null;
 
         document.addEventListener('paste', function(e) {
           if (!e.clipboardData.files.length) {
             return;
           }
-          let file = event.clipboardData.files[0];
-          this.createSignedUrlAndUpload(file);
+          [].forEach.call(event.clipboardData.files, function(file) {
+            this.createSignedUrlAndUpload(file);
+          }.bind(this));
         }.bind(this));
       };
 
       UploadController.prototype.onSubmit = function() {
-        let fileObj = this.inputEl.files[0];
-        this.createSignedUrlAndUpload(fileObj);
+          if (!this.inputEl.files.length) {
+            return;
+          }
+        [].forEach.call(this.inputEl.files, function(file) {
+          this.createSignedUrlAndUpload(file);
+        }.bind(this));
       };
 
       UploadController.prototype.upload = function(file, options) {
-        this.isImage = options.contentType.startsWith('image');
         this.$http.put(options.uploadUrl, file, {
           headers: {'Content-Type': options.contentType},
         }).success(function(result) {
-          this.isWorking = false;
           console.log(`File was uploaded to: ${options.gsPath}`);
           this.uploadedFileUrl = `https://storage.googleapis.com${options.gsPath}`;
           this.finalize(file, options);
         }.bind(this)).error(function(result) {
-          this.isError = true;
+          this.results[file.name].status = 'error';
         }.bind(this));
       };
 
@@ -82,20 +186,34 @@
           url: '/_api/create_serving_url',
           data: `file_id=${options.fileId}`,
         }).success(function(result) {
-          this.isWorking = false;
-          console.log(result);
+          this.results[file.name].status = 'success';
+          this.results[file.name].fileId = options.fileId;
+          this.results[file.name].data = result;
+          this.results[file.name].isImage = options.contentType.startsWith('image');
+          if (!this.snippet) {
+            this.snippet = {};
+          }
+          var newSnippet = {};
+          newSnippet[file.name] = {
+            url: result.serving_url,
+            gs_path: `gs:/${result.gs_path}`,
+          };
+          this.snippet = Object.assign(this.snippet, newSnippet);
+          this.jsonSnippet = JSON.stringify(this.snippet, null, 2);
         }.bind(this)).error(function(result) {
-          this.isError = true;
+          this.results[file.name].status = 'error';
         }.bind(this));
       }
 
       UploadController.prototype.createSignedUrlAndUpload = function(file) {
-        this.isWorking = true;
-        this.isError = false;
         let apiRoot = '/_api/create_upload_url';
         let fileName = file.name;
         let contentLength = file.size;
         let path = apiRoot + '?name=' + fileName + '&content_length=' + contentLength;
+        this.results[file.name] = {
+          name: file.name,
+          status: 'working',
+        };
         this.$http.get(path).success(function(resp) {
           this.upload(file, {
             contentType: resp['content_type'],
