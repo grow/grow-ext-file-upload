@@ -86,7 +86,10 @@
     }
   </style>
   <body>
-    <div ng-controller="UploadController as ctrl">
+    <div
+      ng-cloak
+      ng-controller="UploadController as ctrl"
+    >
       <form ng-submit="ctrl.onSubmit()">
         <input type="file" multiple="true">
         <button type="submit">Upload</button>
