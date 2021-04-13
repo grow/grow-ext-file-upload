@@ -20,6 +20,10 @@
       width: 500px;
     }
 
+    .form--dragover {
+      background-color: #cfeafe;
+    }
+
     .form__tips {
       margin-top: 10px;
       font-size: smaller;
@@ -94,7 +98,7 @@
         <input type="file" multiple="true">
         <button type="submit">Upload</button>
       </form>
-      <div class="form">
+      <div class="form" drop-target ng-class="{'form--dragover' : ctrl.isDragging}">
         <div>
           Choose or paste an image to upload
           <div class="form__tips">
@@ -142,20 +146,50 @@
       </div>
     </div>
     <script>
-      var UploadController = function($http, $element) {
+      var UploadController = function($http, $element, $scope) {
         this.el_ = $element[0];
         this.inputEl = this.el_.querySelector('input[type="file"]');
         this.baseUrl = window.location.origin;
         this.$http = $http;
+        this.$scope = $scope;
         this.results = {};
         this.snippet = null;
         this.jsonSnippet = null;
+        this.isDragging = false;
 
         document.addEventListener('paste', function(e) {
           if (!e.clipboardData.files.length) {
             return;
           }
           [].forEach.call(event.clipboardData.files, function(file) {
+            this.createSignedUrlAndUpload(file);
+          }.bind(this));
+        }.bind(this));
+
+        const dropTarget = this.el_.querySelector('[drop-target]');
+        dropTarget.addEventListener('dragenter', function(e) {
+          this.isDragging = true;
+          this.$scope.$apply();
+        }.bind(this));
+        dropTarget.addEventListener('dragleave', function(e) {
+          this.isDragging = false;
+          this.$scope.$apply();
+        }.bind(this));
+        dropTarget.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.isDragging = true;
+          this.$scope.$apply();
+        }.bind(this));
+        dropTarget.addEventListener('drop', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.isDragging = false;
+          this.$scope.$apply();
+          if (!e.dataTransfer || !e.dataTransfer.files.length) {
+            return;
+          }
+          [].forEach.call(e.dataTransfer.files, function(file) {
             this.createSignedUrlAndUpload(file);
           }.bind(this));
         }.bind(this));
@@ -198,8 +232,10 @@
           }
           var newSnippet = {};
           newSnippet[file.name] = {
-            url: result.serving_url,
             gs_path: `gs:/${result.gs_path}`,
+            height: result.height,
+            url: result.serving_url,
+            width: result.width,
           };
           this.snippet = Object.assign(this.snippet, newSnippet);
           this.jsonSnippet = JSON.stringify(this.snippet, null, 2);

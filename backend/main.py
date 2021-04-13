@@ -101,14 +101,22 @@ class CreateServingUrlHandler(webapp2.RequestHandler):
         if ent.gs_path.endswith(IMAGE_EXTENSIONS):
             blob_key = blobstore.create_gs_key('/gs{}'.format(ent.gs_path))
             serving_url = images.get_serving_url(blob_key, secure_url=True)
+            data = blobstore.fetch_data(blob_key, 0, 50000)
+            image = images.Image(image_data=data)
+            ent.width = image.width
+            ent.height = image.height
         else:
             serving_url = 'https://storage.googleapis.com{}'.format(ent.gs_path)
+            ent.width = 0
+            ent.height = 0
         ent.serving_url = serving_url
         ent.put()
         self.json_response({
             'file_id': file_id,
             'gs_path': ent.gs_path,
             'serving_url': serving_url,
+            'width': ent.width,
+            'height': ent.height,
         })
 
 
