@@ -16,11 +16,9 @@ handlers:
   static_files: uploader.html
   upload: uploader.html
   expiration: 1s
-  login: admin
 - url: /
   static_files: uploader.html
   upload: uploader.html
   expiration: 1s
-  login: admin
 - url: .*
   script: main.app
