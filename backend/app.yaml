@@ -12,6 +12,8 @@ libraries:
 #  GROW_FILE_UPLOAD_FOLDER: folder
 
 handlers:
+- url: /static
+  static_dir: vendor
 - url: /uploader.html
   static_files: uploader.html
   upload: uploader.html

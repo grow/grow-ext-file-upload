@@ -1,6 +1,6 @@
 project :=
 version := auto
-bucket :=
+bucket := $(project).appspot.com
 
 cors:
 	gsutil cors set cors-policy.json gs://$(bucket)

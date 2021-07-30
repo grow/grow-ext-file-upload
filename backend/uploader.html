@@ -3,6 +3,7 @@
   <meta charset="utf-8">
   <title>Uploader</title>
   <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.9/angular.min.js"></script>
+  <script src="/static/js-yaml.min.js"></script>
   <style>
     body {
       font-family: 'Roboto', sans-serif;
@@ -70,11 +71,28 @@
       background-image: radial-gradient(circle, #888 1px, rgba(0,0,0,0) 1px);
       background-size: 20px 20px;
       box-sizing: border-box;
+      line-height: 0;
       padding: 5px;
+    }
+
+    .result__image a {
+      line-height: 0;
     }
 
     .result__image img {
       max-width: 100%;
+    }
+
+    .snippet {
+      line-height: 0;
+      position: relative;
+    }
+
+    .snippet__buttons {
+      bottom: 0;
+      left: 0;
+      position: absolute;
+      z-index: 1;
     }
 
     .snippet textarea {
@@ -120,10 +138,10 @@
           <div ng-if="result.status == 'success'">
             <div class="result__status">
               <div class="result__name">
-                <a href="{{ctrl.baseUrl}}/{{result.fileId}}">{{ctrl.baseUrl}}/{{result.fileId}}</a>
+                Internal URL: <a href="{{ctrl.baseUrl}}/{{result.fileId}}">{{ctrl.baseUrl}}/{{result.fileId}}</a>
               </div>
               <div class="result__url" ng-if="result.isImage">
-                <a href="{{result.data.serving_url}}">{{result.data.serving_url}}</a>
+                Public URL: <a href="{{result.data.serving_url}}">{{result.data.serving_url}}</a>
               </div>
             </div>
             <div
@@ -142,7 +160,11 @@
         </div>
       </div>
       <div class="snippet" ng-if="ctrl.snippet">
-        <textarea>{{ctrl.jsonSnippet}}</textarea>
+        <div class="snippet__buttons">
+          <button ng-click="ctrl.snippetType = 'json'">JSON</button><button ng-click="ctrl.snippetType = 'yaml'">YAML</button>
+        </div>
+        <textarea ng-if="ctrl.snippetType != 'yaml'">{{ctrl.jsonSnippet}}</textarea>
+        <textarea ng-if="ctrl.snippetType == 'yaml'">{{ctrl.yamlSnippet}}</textarea>
       </div>
     </div>
     <script>
@@ -154,6 +176,8 @@
         this.$scope = $scope;
         this.results = {};
         this.snippet = null;
+        this.snippetType = null;
+        this.yamlSnippet = null;
         this.jsonSnippet = null;
         this.isDragging = false;
 
@@ -239,6 +263,7 @@
           };
           this.snippet = Object.assign(this.snippet, newSnippet);
           this.jsonSnippet = JSON.stringify(this.snippet, null, 2);
+          this.yamlSnippet = jsyaml.dump(jsyaml.load(this.jsonSnippet));
         }.bind(this)).error(function(result) {
           this.results[file.name].status = 'error';
         }.bind(this));
