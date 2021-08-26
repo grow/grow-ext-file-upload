@@ -60,9 +60,12 @@
     }
 
     .result__status {
+      align-items: center;
       background-color: #D3E4F9;
       border-radius: 2px;
+      display: flex;
       font-size: smaller;
+      justify-content: space-between;
       padding: 5px;
     }
 
@@ -138,10 +141,12 @@
           <div ng-if="result.status == 'success'">
             <div class="result__status">
               <div class="result__name">
-                Internal URL: <a href="{{ctrl.baseUrl}}/{{result.fileId}}">{{ctrl.baseUrl}}/{{result.fileId}}</a>
+                  {{result.name}}
               </div>
-              <div class="result__url" ng-if="result.isImage">
-                Public URL: <a href="{{result.data.serving_url}}">{{result.data.serving_url}}</a>
+              <div>
+                <a href="{{ctrl.baseUrl}}/{{result.fileId}}">Internal URL</a>
+                <a ng-if="result.isImage" href="{{result.data.serving_url}}">Public URL</a>
+                <button ng-if="result.isImage" ng-click="ctrl.copyText(result.data.serving_url)">Copy</button>
               </div>
             </div>
             <div
@@ -238,6 +243,15 @@
         }.bind(this)).error(function(result) {
           this.results[file.name].status = 'error';
         }.bind(this));
+      };
+
+      UploadController.prototype.copyText = function(url) {
+        var textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        textArea.parentNode.removeChild(textArea);
       };
 
       UploadController.prototype.finalize = function(file, options) {
